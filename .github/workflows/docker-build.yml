@@ -75,10 +75,11 @@ jobs:
           cp scripts-storage/nodejs-${{ matrix.node }}.sh scripts/
 
       - name: Build & Push Multi-Arch Image
-        if: github.event_name != 'pull_request'
         run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+
           DOCKERHUB_IMAGE="cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}"
-          CACHE_IMAGE="ghcr.io/${{ github.repository }}:cache-${{ matrix.php }}-node-${{ matrix.node }}"
+          CACHE_IMAGE="ghcr.io/${REPO_LOWER}:cache-${{ matrix.php }}-node-${{ matrix.node }}"
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
             echo "Scheduled build → forcing base refresh"
