@@ -16,7 +16,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     permissions:
       contents: read
@@ -48,7 +48,22 @@ jobs:
       LATEST_NODE_VERSION: "24"
 
     steps:
+      - name: Start Measurement
+        if: github.event_name != 'pull_request'
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # use hash or @vX here (See note below)
+        with:
+          task: start-measurement
+          continue-on-error: true
+
       - uses: actions/checkout@v4
+
+      - name: Checkout Repo Measurement
+        if: github.event_name != 'pull_request'
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # use hash or @vX here (See note below)
+        with:
+          task: get-measurement
+          label: 'repo checkout'
+          continue-on-error: true
 
       # Login to Docker Hub
       - name: Login to Docker Hub
@@ -78,6 +93,7 @@ jobs:
           cp scripts-storage/nodejs-${{ matrix.node }}.sh scripts/
 
       - name: Build & Push Multi-Arch Image
+        if: github.event_name != 'pull_request'
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
@@ -101,9 +117,24 @@ jobs:
             --push \
             .
 
+      - name: Docker build Measurment
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # use hash or @vX here (See note below)
+        with:
+          task: get-measurement
+          label: 'docker build'
+          continue-on-error: true
+
+
       - name: Tag Latest (if configured combo)
         if: github.event_name != 'pull_request' && matrix.php == env.LATEST_PHP_VERSION && matrix.node == env.LATEST_NODE_VERSION
         run: |
           docker buildx imagetools create \
             --tag cwallenberg/php-image:latest \
             cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}
+
+      - name: Show Energy Results
+        if: github.event_name != 'pull_request'
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # use hash or @vX here (See note below)
+        with:
+          task: display-results
+          continue-on-error: true
