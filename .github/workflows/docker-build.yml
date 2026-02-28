@@ -32,9 +32,11 @@ jobs:
       fail-fast: false
       matrix:
         php: ["8.3", "8.4", "8.5"]
-        node: ["20", "22", "24"]
+        node: ["20", "22", "24", "25"]
         arch: ["amd64", "arm64"]
         exclude:
+          - php: "8.3"
+            node: "25"
           - php: "8.4"
             node: "20"
           - php: "8.5"
