@@ -27,7 +27,6 @@ RUN buildDeps=" \
         httpie \
         imagemagick-6-common \
         jq \
-        lftp \
         libfreetype6 \
         libfreetype6-dev \
         libgmp-dev \
