@@ -1,9 +1,17 @@
-name: Build Docker Images
+name: Build Docker Images (Native Multi-Arch)
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  LATEST_PHP_VERSION: "8.5"
+  LATEST_NODE_VERSION: "24"
 
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - '.github/workflows/docker-build.yml'
       - '8.3/**'
@@ -12,44 +20,29 @@ on:
       - 'scripts-storage/*.sh'
 
   schedule:
-    - cron: '0 2 * * 0,2,5'   # Monday 02:00 UTC
+    - cron: '0 2 * * 1'   # Monday 02:00 UTC
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      packages: write
+  build:
+    name: Build ${{ matrix.php }}-node-${{ matrix.node }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm64' || 'ubuntu-24.04' }}
+
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - php: "8.3"
+        php: ["8.3", "8.4", "8.5"]
+        node: ["20", "22", "24"]
+        arch: ["amd64", "arm64"]
+        exclude:
+          - php: "8.4"
             node: "20"
-          - php: "8.3"
-            node: "22"
-          - php: "8.3"
-            node: "24"
-          - php: "8.4"
-            node: "22"
-          - php: "8.4"
-            node: "24"
-          - php: "8.4"
-            node: "25"
           - php: "8.5"
-            node: "22"
-          - php: "8.5"
-            node: "24"
-          - php: "8.5"
-            node: "25"
+            node: "20"
 
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      LATEST_PHP_VERSION: "8.5"
-      LATEST_NODE_VERSION: "24"
 
     steps:
       - name: Start Measurement
@@ -69,40 +62,27 @@ jobs:
           label: 'repo checkout'
         continue-on-error: true
 
-      # Login to Docker Hub
       - name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
         run: echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 
-      # Login to GHCR (cache storage)
-      - name: Login to GHCR
-        if: github.event_name != 'pull_request'
+      - name: Login to GHCR (for cache)
         run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      # Enable multi-arch
-      - name: Set up QEMU
-        if: github.event_name != 'pull_request'
-        uses: docker/setup-qemu-action@v3
-
-      # Setup Buildx
-      - name: Set up Docker Buildx
-        if: github.event_name != 'pull_request'
+      - name: Setup Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Prepare scripts
-        if: github.event_name != 'pull_request'
         run: |
           mkdir -p scripts
           cp scripts-storage/composer.sh scripts/
           cp scripts-storage/nodejs-${{ matrix.node }}.sh scripts/
 
-      - name: Build & Push Multi-Arch Image
-        if: github.event_name != 'pull_request'
+      - name: Build & Push Arch Image
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
-          DOCKERHUB_IMAGE="cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}"
-          CACHE_IMAGE="ghcr.io/${REPO_LOWER}:cache-${{ matrix.php }}-node-${{ matrix.node }}"
+          DOCKERHUB_IMAGE="cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}-${{ matrix.arch }}"
+          CACHE_IMAGE="ghcr.io/${REPO_LOWER}:cache-${{ matrix.php }}-node-${{ matrix.node }}-${{ matrix.arch }}"
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
             echo "Scheduled build → forcing base refresh"
@@ -113,7 +93,7 @@ jobs:
 
           docker buildx build \
             $PULL_FLAG \
-            --platform linux/amd64,linux/arm64 \
+            --platform linux/${{ matrix.arch }} \
             --cache-from type=registry,ref=$CACHE_IMAGE \
             --cache-to type=registry,ref=$CACHE_IMAGE,mode=max \
             --tag $DOCKERHUB_IMAGE \
@@ -128,13 +108,61 @@ jobs:
           label: 'docker build'
         continue-on-error: true
 
+      - name: Show Energy Results
+        if: github.event_name != 'pull_request'
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # use hash or @vX here (See note below)
+        with:
+          task: display-results
+        continue-on-error: true
+
+
+  merge:
+    name: Merge multi-arch manifests
+    needs: build
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["8.3", "8.4", "8.5"]
+        node: ["20", "22", "24"]
+        exclude:
+          - php: "8.4"
+            node: "20"
+          - php: "8.5"
+            node: "20"
+
+    steps:
+      - name: Start Measurement
+        if: github.event_name != 'pull_request'
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # use hash or @vX here (See note below)
+        with:
+          task: start-measurement
+        continue-on-error: true
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Create Multi-Arch Manifest
+        run: |
+          docker buildx imagetools create \
+            --tag cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }} \
+            cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}-amd64 \
+            cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}-arm64
 
       - name: Tag Latest (if configured combo)
-        if: github.event_name != 'pull_request' && matrix.php == env.LATEST_PHP_VERSION && matrix.node == env.LATEST_NODE_VERSION
+        if: matrix.php == env.LATEST_PHP_VERSION && matrix.node == env.LATEST_NODE_VERSION
         run: |
           docker buildx imagetools create \
             --tag cwallenberg/php-image:latest \
             cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}
+
+      - name: Docker image merge Measurment
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # use hash or @vX here (See note below)
+        with:
+          task: get-measurement
+          label: 'docker build'
+        continue-on-error: true
 
       - name: Show Energy Results
         if: github.event_name != 'pull_request'
