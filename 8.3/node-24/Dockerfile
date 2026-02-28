@@ -55,14 +55,12 @@ RUN buildDeps=" \
 	&& bash ./nodejs-24.sh \
 	&& docker-php-ext-configure zip \
     # Don't instal soap, mysqli
-    && docker-php-ext-install bcmath bz2 calendar iconv intl mbstring opcache pdo_mysql pcntl zip \
+    && docker-php-ext-install bcmath bz2 calendar intl pdo_mysql pcntl zip \
     && docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
     && docker-php-ext-install gd \
 	&& docker-php-ext-configure gmp \
 	&& docker-php-ext-install gmp \
     && docker-php-ext-install exif \
-    && docker-php-ext-install opcache \
-    && docker-php-ext-enable opcache \
     && apt-get purge -y --auto-remove $buildDeps \
     && rm -r /var/lib/apt/lists/* \
     # Install Composer.
@@ -70,12 +68,7 @@ RUN buildDeps=" \
     #&& ln -s $(composer config --global home) /root/composer \
     && rm /var/www/*.sh
 ENV PATH=$PATH:/root/.composer/vendor/bin COMPOSER_ALLOW_SUPERUSER=1
-#ENV PATH="/root/.yarn/bin:/root/.config/yarn/global/node_modules/.bin:$PATH"
 RUN npm install --global corepack@latest
-#RUN ln -s /root/.yarn/bin/yarn /usr/bin/yarn
-#RUN wget -qO- https://get.pnpm.io/install.sh | ENV="$HOME/.shrc" SHELL="$(which sh)" sh -
-#ENV PATH="/root/.local/share/pnpm:$PATH"
-#RUN ln -s /root/.local/share/pnpm/pnpm /usr/bin/pnpm
 RUN ln -s $(which php) /usr/local/bin/php8.3
 
 # RUN php -v

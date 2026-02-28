@@ -69,10 +69,6 @@ RUN buildDeps=" \
     && rm /var/www/*.sh
 ENV PATH=$PATH:/root/.composer/vendor/bin COMPOSER_ALLOW_SUPERUSER=1
 RUN npm install --global corepack@latest
-#RUN ln -s /root/.yarn/bin/yarn /usr/bin/yarn
-#RUN wget -qO- https://get.pnpm.io/install.sh | ENV="$HOME/.shrc" SHELL="$(which sh)" sh -
-#ENV PATH="/root/.local/share/pnpm:$PATH"
-#RUN ln -s /root/.local/share/pnpm/pnpm /usr/bin/pnpm
 RUN ln -s $(which php) /usr/local/bin/php8.5
 
 # RUN php -v
