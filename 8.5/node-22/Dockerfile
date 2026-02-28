@@ -34,7 +34,6 @@ RUN buildDeps=" \
         libicu-dev \
         libjpeg-dev \
 	    libjpeg62-turbo-dev \
-        libldap2-dev \
         libmagickwand-7.q16-dev \
         libonig-dev \
         libpng-dev \
