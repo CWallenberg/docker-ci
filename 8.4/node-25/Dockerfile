@@ -52,7 +52,7 @@ RUN buildDeps=" \
 	    zip \
     " \
 	&& apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y $buildDeps $runtimeDeps \
-	&& bash ./nodejs-24.sh \
+	&& bash ./nodejs-25.sh \
 	&& docker-php-ext-configure zip \
     # Don't instal soap, mysqli
     && docker-php-ext-install bcmath bz2 calendar intl pdo_mysql pcntl zip \
