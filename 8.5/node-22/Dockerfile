@@ -68,5 +68,3 @@ RUN buildDeps=" \
 ENV PATH=$PATH:/root/.composer/vendor/bin COMPOSER_ALLOW_SUPERUSER=1
 RUN npm install --global corepack@latest
 RUN ln -s $(which php) /usr/local/bin/php8.5
-
-# RUN php -v
