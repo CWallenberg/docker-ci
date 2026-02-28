@@ -55,7 +55,7 @@ RUN buildDeps=" \
 	&& bash ./nodejs-22.sh \
 	&& docker-php-ext-configure zip \
     # Don't instal soap, mysqli
-    && docker-php-ext-install bcmath bz2 calendar intl pdo_mysql pcntl zip \
+    && docker-php-ext-install intl pdo_mysql pcntl zip \
     && docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
     && docker-php-ext-install gd \
 	&& docker-php-ext-configure gmp \
