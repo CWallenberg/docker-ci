@@ -54,7 +54,7 @@ jobs:
           task: start-measurement
         continue-on-error: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Checkout Repo Measurement
         if: github.event_name != 'pull_request'
