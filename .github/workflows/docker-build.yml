@@ -83,7 +83,7 @@ jobs:
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
-          DOCKERHUB_IMAGE="cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}-${{ matrix.arch }}"
+          ARCH_IMAGE="ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}-${{ matrix.arch }}"
           CACHE_IMAGE="ghcr.io/${REPO_LOWER}:cache-${{ matrix.php }}-node-${{ matrix.node }}-${{ matrix.arch }}"
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
@@ -98,7 +98,7 @@ jobs:
             --platform linux/${{ matrix.arch }} \
             --cache-from type=registry,ref=$CACHE_IMAGE \
             --cache-to type=registry,ref=$CACHE_IMAGE,mode=max \
-            --tag $DOCKERHUB_IMAGE \
+            --tag $ARCH_IMAGE \
             --file ./${{ matrix.php }}/node-${{ matrix.node }}/Dockerfile \
             --push \
             .
@@ -149,10 +149,12 @@ jobs:
 
       - name: Create Multi-Arch Manifest
         run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+
           docker buildx imagetools create \
             --tag cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }} \
-            cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}-amd64 \
-            cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}-arm64
+            ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}-amd64 \
+            ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}-arm64
 
       - name: Tag Latest (if configured combo)
         if: matrix.php == env.LATEST_PHP_VERSION && matrix.node == env.LATEST_NODE_VERSION
