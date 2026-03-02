@@ -7,7 +7,9 @@ permissions:
 env:
   LATEST_PHP_VERSION: "8.5"
   LATEST_NODE_VERSION: "24"
+
   CACHE_KEEP_COUNT: "2"
+  UNTAGGED_RETENTION_DAYS: "7"
 
 on:
   push:
@@ -196,19 +198,44 @@ jobs:
           label: 'docker merge'
         continue-on-error: true
 
-      - name: Delete GHCR Arch Tags
+      - name: Delete GHCR Arch Tags (all pages)
         run: |
+          set -e
+
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          OWNER=$(echo "${REPO_LOWER}" | cut -d'/' -f1)
           PACKAGE_NAME=$(echo "${REPO_LOWER}" | cut -d'/' -f2)
 
           for ARCH in amd64 arm64; do
-            TAG="${{ matrix.php }}-node-${{ matrix.node }}-${ARCH}"
-            echo "Deleting GHCR tag: $TAG"
+            TARGET_TAG="${{ matrix.php }}-node-${{ matrix.node }}-${ARCH}"
+            echo "Searching for tag: $TARGET_TAG"
 
-            gh api \
-              -X DELETE \
-              /user/packages/container/${PACKAGE_NAME}/versions \
-              -f package_type=container || true
+            PAGE=1
+            while : ; do
+              RESPONSE=$(gh api \
+                /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions \
+                -f per_page=100 \
+                -f page=$PAGE)
+
+              COUNT=$(echo "$RESPONSE" | jq length)
+              [ "$COUNT" -eq 0 ] && break
+
+              echo "$RESPONSE" | jq -c '.[]' | while read VERSION; do
+                VERSION_ID=$(echo "$VERSION" | jq -r '.id')
+                TAGS=$(echo "$VERSION" | jq -r '.metadata.container.tags[]?')
+
+                if echo "$TAGS" | grep -qx "$TARGET_TAG"; then
+                  echo "Deleting version id: $VERSION_ID (tag $TARGET_TAG)"
+                  gh api -X DELETE \
+                    /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/$VERSION_ID
+                  sleep 2
+                fi
+              done
+
+              sleep 1
+
+              PAGE=$((PAGE+1))
+            done
           done
         env:
           GH_TOKEN: ${{ github.token }}
@@ -228,65 +255,100 @@ jobs:
         continue-on-error: true
 
 
-  prune-cache:
-    name: Prune GHCR Cache
-    runs-on: ubuntu-latest
-    needs: merge
+prune-cache:
+  name: Prune GHCR Cache & Untagged Images
+  runs-on: ubuntu-24.04
+  needs: merge
 
-    steps:
-      - name: Start Measurement
-        if: github.event_name != 'pull_request'
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
-        with:
-          task: start-measurement
-        continue-on-error: true
+  steps:
+    - name: Start Measurement
+      if: github.event_name != 'pull_request'
+      uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+      with:
+        task: start-measurement
+      continue-on-error: true
 
-      - name: Prune old cache tags
-        run: |
-          set -e
+    - name: Prune GHCR
+      run: |
+        set -e
 
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          PACKAGE_NAME=$(echo "${REPO_LOWER}" | cut -d'/' -f2)
-          KEEP_COUNT=${CACHE_KEEP_COUNT}
+        REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        OWNER=$(echo "${REPO_LOWER}" | cut -d'/' -f1)
+        PACKAGE_NAME=$(echo "${REPO_LOWER}" | cut -d'/' -f2)
 
-          echo "Keeping newest $KEEP_COUNT cache versions per tag..."
+        KEEP_COUNT=${CACHE_KEEP_COUNT}
+        RETENTION_DAYS=${UNTAGGED_RETENTION_DAYS}
+        NOW=$(date -u +%s)
 
-          # Fetch all package versions
-          gh api \
-            /user/packages/container/${PACKAGE_NAME}/versions \
-            > versions.json
+        echo "Keeping newest $KEEP_COUNT cache versions per tag"
+        echo "Deleting untagged images older than $RETENTION_DAYS days"
 
-          # Extract cache-tagged versions
-          jq -c '
-            .[] 
-            | select(.metadata.container.tags[]? | startswith("cache-"))
-            | {id: .id, created_at: .created_at, tags: .metadata.container.tags}
-          ' versions.json > cache_versions.json
+        PAGE=1
+        while : ; do
+          RESPONSE=$(gh api \
+            /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions \
+            -f per_page=100 \
+            -f page=$PAGE)
 
-          # Group by primary tag and prune older than KEEP_COUNT
-          jq -s --argjson keep "$KEEP_COUNT" '
-            group_by(.tags[0])
-            | map(sort_by(.created_at) | reverse | .[$keep:])
-            | flatten
-            | .[].id
-          ' cache_versions.json | while read VERSION_ID; do
-              echo "Deleting cache version id: $VERSION_ID"
-              gh api -X DELETE /user/packages/container/${PACKAGE_NAME}/versions/$VERSION_ID
-          done
+          COUNT=$(echo "$RESPONSE" | jq length)
+          [ "$COUNT" -eq 0 ] && break
 
-        env:
-          GH_TOKEN: ${{ github.token }}
+          echo "$RESPONSE" | jq -c '.[]' >> all_versions.json
+          PAGE=$((PAGE+1))
+        done
 
-      - name: GHCR Cache tags Cleanup Measurment
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
-        with:
-          task: get-measurement
-          label: 'ghcr cache tags cleanup'
-        continue-on-error: true
+        # -------------------------
+        # Cache pruning (keep newest N per tag)
+        # -------------------------
 
-      - name: Show Energy Results
-        if: github.event_name != 'pull_request'
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
-        with:
-          task: display-results
-        continue-on-error: true
+        jq -s '
+          flatten
+          | map(select(.metadata.container.tags[]? | startswith("cache-")))
+          | group_by(.metadata.container.tags[0])
+          | map(sort_by(.created_at) | reverse | .['"$KEEP_COUNT"':])
+          | flatten
+          | .[].id
+        ' all_versions.json | while read VERSION_ID; do
+            echo "Deleting old cache version id: $VERSION_ID"
+            gh api -X DELETE \
+              /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/$VERSION_ID
+
+            sleep 2
+        done
+
+        # -------------------------
+        # Untagged pruning (older than X days)
+        # -------------------------
+
+        jq -s 'flatten | map(select(.metadata.container.tags == null or .metadata.container.tags == [])) | .[]' all_versions.json | while read VERSION; do
+          VERSION_ID=$(echo "$VERSION" | jq -r '.id')
+          CREATED_AT=$(echo "$VERSION" | jq -r '.created_at')
+
+          CREATED_TS=$(date -d "$CREATED_AT" +%s)
+          AGE_DAYS=$(( (NOW - CREATED_TS) / 86400 ))
+
+          if [ "$AGE_DAYS" -gt "$RETENTION_DAYS" ]; then
+            echo "Deleting untagged version id: $VERSION_ID (age $AGE_DAYS days)"
+            gh api -X DELETE \
+              /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/$VERSION_ID
+
+            sleep 2
+          fi
+        done
+
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: GHCR Cache tags Cleanup Measurment
+      uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+      with:
+        task: get-measurement
+        label: 'ghcr cache tags cleanup'
+      continue-on-error: true
+
+    - name: Show Energy Results
+      if: github.event_name != 'pull_request'
+      uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+      with:
+        task: display-results
+      continue-on-error: true
