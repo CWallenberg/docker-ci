@@ -270,7 +270,7 @@ jobs:
 
   prune-cache:
     name: Prune GHCR Cache & Untagged Images
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: merge
 
     steps:
@@ -281,11 +281,12 @@ jobs:
           task: start-measurement
         continue-on-error: true
 
-      - name: Delete GHCR Arch Tags
+      - name: Prune GHCR Untagged Images
         run: |
           set -euo pipefail
 
           DEBUG="${GHCR_DEBUG}"
+          RETENTION_DAYS="${UNTAGGED_RETENTION_DAYS}"
 
           debug() {
             if [ "$DEBUG" = "true" ]; then
@@ -294,37 +295,35 @@ jobs:
           }
 
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          OWNER=$(echo "${REPO_LOWER}" | cut -d'/' -f1)
           PACKAGE_NAME=$(echo "${REPO_LOWER}" | cut -d'/' -f2)
 
-          debug "Repository: $REPO_LOWER"
-          debug "Owner: $OWNER"
-          debug "Package: $PACKAGE_NAME"
-
-          # Personal account endpoint
           API_PATH="user/packages/container/${PACKAGE_NAME}/versions"
 
-          debug "Fetching all package versions using --paginate"
+          debug "Fetching all versions with --paginate"
           ALL_VERSIONS=$(gh api "$API_PATH" --paginate)
 
-          TOTAL=$(echo "$ALL_VERSIONS" | jq length)
-          debug "Total versions fetched: $TOTAL"
+          NOW=$(date -u +%s)
+          debug "Current timestamp (UTC): $NOW"
+          debug "Retention days: $RETENTION_DAYS"
 
-          for ARCH in amd64 arm64; do
-            TARGET_TAG="${{ matrix.php }}-node-${{ matrix.node }}-${ARCH}"
-            echo "Searching for tag: $TARGET_TAG"
+          echo "$ALL_VERSIONS" | jq -c '.[]' | while read VERSION; do
+            VERSION_ID=$(echo "$VERSION" | jq -r '.id')
+            CREATED_AT=$(echo "$VERSION" | jq -r '.created_at')
+            TAGS=$(echo "$VERSION" | jq -r '.metadata.container.tags // empty | length')
 
-            MATCHING_IDS=$(echo "$ALL_VERSIONS" | jq -r \
-              --arg tag "$TARGET_TAG" \
-              '.[] | select(.metadata.container.tags[]? == $tag) | .id')
-
-            if [ -z "$MATCHING_IDS" ]; then
-              debug "No matches found for $TARGET_TAG"
+            # Skip tagged images
+            if [ "$TAGS" -ne 0 ]; then
+              debug "Skipping tagged version id: $VERSION_ID"
               continue
             fi
 
-            for VERSION_ID in $MATCHING_IDS; do
-              echo "Deleting version id: $VERSION_ID (tag $TARGET_TAG)"
+            CREATED_TS=$(date -u -d "$CREATED_AT" +%s)
+            AGE_DAYS=$(( (NOW - CREATED_TS) / 86400 ))
+
+            debug "Version $VERSION_ID age: $AGE_DAYS days"
+
+            if [ "$AGE_DAYS" -gt "$RETENTION_DAYS" ]; then
+              echo "Deleting untagged version id: $VERSION_ID (age ${AGE_DAYS} days)"
 
               DELETE_PATH="user/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}"
               debug "DELETE: https://api.github.com/${DELETE_PATH}"
@@ -332,7 +331,7 @@ jobs:
               gh api -X DELETE "$DELETE_PATH"
 
               sleep 1
-            done
+            fi
           done
         env:
           GH_TOKEN: ${{ secrets.GHCR_PAT }}
