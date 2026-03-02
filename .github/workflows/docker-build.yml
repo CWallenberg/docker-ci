@@ -229,8 +229,8 @@ jobs:
 
             PAGE=1
             while : ; do
-              API_PATH="/user/packages/container/${PACKAGE_NAME}/versions"
-              FULL_URL="https://api.github.com${API_PATH}?per_page=100&page=${PAGE}"
+              API_PATH="user/packages/container/${PACKAGE_NAME}/versions"
+              FULL_URL="https://api.github.com/${API_PATH}?per_page=100&page=${PAGE}"
 
               debug "Calling: $FULL_URL"
 
