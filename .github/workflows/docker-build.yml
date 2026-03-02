@@ -281,9 +281,9 @@ jobs:
           task: start-measurement
         continue-on-error: true
 
-      - name: Delete GHCR Arch Tags (all pages)
+      - name: Delete GHCR Arch Tags
         run: |
-          set -e
+          set -euo pipefail
 
           DEBUG="${GHCR_DEBUG}"
 
@@ -297,53 +297,41 @@ jobs:
           OWNER=$(echo "${REPO_LOWER}" | cut -d'/' -f1)
           PACKAGE_NAME=$(echo "${REPO_LOWER}" | cut -d'/' -f2)
 
-          debug "Repository (lowercase): $REPO_LOWER"
+          debug "Repository: $REPO_LOWER"
           debug "Owner: $OWNER"
           debug "Package: $PACKAGE_NAME"
+
+          # Personal account endpoint
+          API_PATH="user/packages/container/${PACKAGE_NAME}/versions"
+
+          debug "Fetching all package versions using --paginate"
+          ALL_VERSIONS=$(gh api "$API_PATH" --paginate)
+
+          TOTAL=$(echo "$ALL_VERSIONS" | jq length)
+          debug "Total versions fetched: $TOTAL"
 
           for ARCH in amd64 arm64; do
             TARGET_TAG="${{ matrix.php }}-node-${{ matrix.node }}-${ARCH}"
             echo "Searching for tag: $TARGET_TAG"
 
-            PAGE=1
-            while : ; do
-              API_PATH="/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions"
-              FULL_URL="https://api.github.com${API_PATH}?per_page=100&page=${PAGE}"
+            MATCHING_IDS=$(echo "$ALL_VERSIONS" | jq -r \
+              --arg tag "$TARGET_TAG" \
+              '.[] | select(.metadata.container.tags[]? == $tag) | .id')
 
-              debug "Calling: $FULL_URL"
+            if [ -z "$MATCHING_IDS" ]; then
+              debug "No matches found for $TARGET_TAG"
+              continue
+            fi
 
-              RESPONSE=$(gh api \
-                "$API_PATH" \
-                -f per_page=100 \
-                -f page=$PAGE)
+            for VERSION_ID in $MATCHING_IDS; do
+              echo "Deleting version id: $VERSION_ID (tag $TARGET_TAG)"
 
-              COUNT=$(echo "$RESPONSE" | jq length)
-              debug "Versions returned: $COUNT"
+              DELETE_PATH="user/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}"
+              debug "DELETE: https://api.github.com/${DELETE_PATH}"
 
-              [ "$COUNT" -eq 0 ] && break
-
-              echo "$RESPONSE" | jq -c '.[]' | while read VERSION; do
-                VERSION_ID=$(echo "$VERSION" | jq -r '.id')
-                TAGS=$(echo "$VERSION" | jq -r '.metadata.container.tags[]?' || true)
-
-                debug "Version ID: $VERSION_ID"
-                debug "Tags: $TAGS"
-
-                if echo "$TAGS" | grep -qx "$TARGET_TAG"; then
-                  echo "Deleting version id: $VERSION_ID (tag $TARGET_TAG)"
-
-                  DELETE_URL="https://api.github.com/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}"
-                  debug "DELETE: $DELETE_URL"
-
-                  gh api -X DELETE \
-                    "/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}"
-
-                  sleep 2
-                fi
-              done
+              gh api -X DELETE "$DELETE_PATH"
 
               sleep 1
-              PAGE=$((PAGE+1))
             done
           done
         env:
