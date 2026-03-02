@@ -136,7 +136,7 @@ jobs:
       fail-fast: false
       matrix:
         #php: ["8.3", "8.4", "8.5"]
-        php: ["8.3", "8.4", "8.5"]
+        php: ["8.4"]
         #node: ["20", "22", "24", "25"]
         node: ["24"]
         exclude:
@@ -220,7 +220,7 @@ jobs:
           PACKAGE_NAME=$(echo "${REPO_LOWER}" | cut -d'/' -f2)
 
           debug "Repository (lowercase): $REPO_LOWER"
-          #debug "Owner: $OWNER"
+          debug "Owner: $OWNER"
           debug "Package: $PACKAGE_NAME"
 
           for ARCH in amd64 arm64; do
@@ -229,10 +229,13 @@ jobs:
 
             PAGE=1
             while : ; do
-              debug "Fetching page $PAGE"
+              API_PATH="/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions"
+              FULL_URL="https://api.github.com${API_PATH}?per_page=100&page=${PAGE}"
+
+              debug "Calling: $FULL_URL"
 
               RESPONSE=$(gh api \
-                /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions \
+                "$API_PATH" \
                 -f per_page=100 \
                 -f page=$PAGE)
 
@@ -251,8 +254,11 @@ jobs:
                 if echo "$TAGS" | grep -qx "$TARGET_TAG"; then
                   echo "Deleting version id: $VERSION_ID (tag $TARGET_TAG)"
 
+                  DELETE_URL="https://api.github.com/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}"
+                  debug "DELETE: $DELETE_URL"
+
                   gh api -X DELETE \
-                    /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/$VERSION_ID
+                    "/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}"
 
                   sleep 2
                 fi
