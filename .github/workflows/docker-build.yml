@@ -269,7 +269,7 @@ jobs:
             done
           done
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GHCR_PAT }}
 
       - name: GHCR Arch Tags Cleanup Measurment
         uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
@@ -365,7 +365,7 @@ jobs:
             done
           done
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GHCR_PAT }}
 
       - name: GHCR Cache tags Cleanup Measurment
         uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
