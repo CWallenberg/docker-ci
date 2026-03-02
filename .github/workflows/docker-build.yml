@@ -35,8 +35,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ["8.3", "8.4", "8.5"]
-        node: ["20", "22", "24", "25"]
+        #php: ["8.3", "8.4", "8.5"]
+        php: ["8.4"]
+        #node: ["20", "22", "24", "25"]
+        node: ["24"]
         arch: ["amd64", "arm64"]
         exclude:
           - php: "8.3"
@@ -133,8 +135,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        #php: ["8.3", "8.4", "8.5"]
         php: ["8.3", "8.4", "8.5"]
-        node: ["20", "22", "24", "25"]
+        #node: ["20", "22", "24", "25"]
+        node: ["24"]
         exclude:
           - php: "8.3"
             node: "25"
@@ -289,74 +293,71 @@ jobs:
           task: start-measurement
         continue-on-error: true
 
-      - name: Prune GHCR
+      - name: Delete GHCR Arch Tags (all pages)
         run: |
           set -e
+
+          DEBUG="${GHCR_DEBUG}"
+
+          debug() {
+            if [ "$DEBUG" = "true" ]; then
+              echo "[DEBUG] $1"
+            fi
+          }
 
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           OWNER=$(echo "${REPO_LOWER}" | cut -d'/' -f1)
           PACKAGE_NAME=$(echo "${REPO_LOWER}" | cut -d'/' -f2)
 
-          KEEP_COUNT=${CACHE_KEEP_COUNT}
-          RETENTION_DAYS=${UNTAGGED_RETENTION_DAYS}
-          NOW=$(date -u +%s)
+          debug "Repository (lowercase): $REPO_LOWER"
+          debug "Owner: $OWNER"
+          debug "Package: $PACKAGE_NAME"
 
-          echo "Keeping newest $KEEP_COUNT cache versions per tag"
-          echo "Deleting untagged images older than $RETENTION_DAYS days"
+          for ARCH in amd64 arm64; do
+            TARGET_TAG="${{ matrix.php }}-node-${{ matrix.node }}-${ARCH}"
+            echo "Searching for tag: $TARGET_TAG"
 
-          PAGE=1
-          while : ; do
-            RESPONSE=$(gh api \
-              /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions \
-              -f per_page=100 \
-              -f page=$PAGE)
+            PAGE=1
+            while : ; do
+              API_PATH="/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions"
+              FULL_URL="https://api.github.com${API_PATH}?per_page=100&page=${PAGE}"
 
-            COUNT=$(echo "$RESPONSE" | jq length)
-            [ "$COUNT" -eq 0 ] && break
+              debug "Calling: $FULL_URL"
 
-            echo "$RESPONSE" | jq -c '.[]' >> all_versions.json
-            PAGE=$((PAGE+1))
+              RESPONSE=$(gh api \
+                "$API_PATH" \
+                -f per_page=100 \
+                -f page=$PAGE)
+
+              COUNT=$(echo "$RESPONSE" | jq length)
+              debug "Versions returned: $COUNT"
+
+              [ "$COUNT" -eq 0 ] && break
+
+              echo "$RESPONSE" | jq -c '.[]' | while read VERSION; do
+                VERSION_ID=$(echo "$VERSION" | jq -r '.id')
+                TAGS=$(echo "$VERSION" | jq -r '.metadata.container.tags[]?' || true)
+
+                debug "Version ID: $VERSION_ID"
+                debug "Tags: $TAGS"
+
+                if echo "$TAGS" | grep -qx "$TARGET_TAG"; then
+                  echo "Deleting version id: $VERSION_ID (tag $TARGET_TAG)"
+
+                  DELETE_URL="https://api.github.com/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}"
+                  debug "DELETE: $DELETE_URL"
+
+                  gh api -X DELETE \
+                    "/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}"
+
+                  sleep 2
+                fi
+              done
+
+              sleep 1
+              PAGE=$((PAGE+1))
+            done
           done
-
-          # -------------------------
-          # Cache pruning (keep newest N per tag)
-          # -------------------------
-
-          jq -s '
-            flatten
-            | map(select(.metadata.container.tags[]? | startswith("cache-")))
-            | group_by(.metadata.container.tags[0])
-            | map(sort_by(.created_at) | reverse | .['"$KEEP_COUNT"':])
-            | flatten
-            | .[].id
-          ' all_versions.json | while read VERSION_ID; do
-              echo "Deleting old cache version id: $VERSION_ID"
-              gh api -X DELETE \
-                /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/$VERSION_ID
-
-              sleep 2
-          done
-
-          # -------------------------
-          # Untagged pruning (older than X days)
-          # -------------------------
-
-          jq -s 'flatten | map(select(.metadata.container.tags == null or .metadata.container.tags == [])) | .[]' all_versions.json | while read VERSION; do
-            VERSION_ID=$(echo "$VERSION" | jq -r '.id')
-            CREATED_AT=$(echo "$VERSION" | jq -r '.created_at')
-
-            CREATED_TS=$(date -d "$CREATED_AT" +%s)
-            AGE_DAYS=$(( (NOW - CREATED_TS) / 86400 ))
-
-            if [ "$AGE_DAYS" -gt "$RETENTION_DAYS" ]; then
-              echo "Deleting untagged version id: $VERSION_ID (age $AGE_DAYS days)"
-              gh api -X DELETE \
-                /users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/$VERSION_ID
-
-              sleep 2
-            fi
-          done
-
         env:
           GH_TOKEN: ${{ github.token }}
 
