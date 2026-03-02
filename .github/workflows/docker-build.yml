@@ -42,10 +42,6 @@ jobs:
           - php: "8.5"
             node: "20"
 
-    env:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-
     steps:
       - name: Start Measurement
         if: github.event_name != 'pull_request'
@@ -65,10 +61,17 @@ jobs:
         continue-on-error: true
 
       - name: Login to Docker Hub
-        run: echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GHCR (for cache)
-        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
 
       - name: Setup Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
@@ -145,23 +148,45 @@ jobs:
         continue-on-error: true
 
       - name: Login to Docker Hub
-        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Create Multi-Arch Manifest
+      - name: Login to GHCR (for cache)
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Create Multi-Arch Manifest in GHCR
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+
+          GHCR_TAG="ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}"
+
+          docker buildx imagetools create \
+            --tag $GHCR_TAG \
+            ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}-amd64 \
+            ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}-arm64
+
+      - name: Push Final Image to Docker Hub
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
           docker buildx imagetools create \
             --tag cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }} \
-            ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}-amd64 \
-            ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}-arm64
+            ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}
 
       - name: Tag Latest (if configured combo)
         if: matrix.php == env.LATEST_PHP_VERSION && matrix.node == env.LATEST_NODE_VERSION
         run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+
           docker buildx imagetools create \
             --tag cwallenberg/php-image:latest \
-            cwallenberg/php-image:${{ matrix.php }}-node-${{ matrix.node }}
+            ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}
 
       - name: Docker image merge Measurment
         uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # v5.2.0
@@ -169,6 +194,23 @@ jobs:
           task: get-measurement
           label: 'docker merge'
         continue-on-error: true
+
+      - name: Delete GHCR Arch Tags
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          PACKAGE_NAME=$(echo "${REPO_LOWER}" | cut -d'/' -f2)
+
+          for ARCH in amd64 arm64; do
+            TAG="${{ matrix.php }}-node-${{ matrix.node }}-${ARCH}"
+            echo "Deleting GHCR tag: $TAG"
+
+            gh api \
+              -X DELETE \
+              /user/packages/container/${PACKAGE_NAME}/versions \
+              -f package_type=container || true
+          done
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Show Energy Results
         if: github.event_name != 'pull_request'
