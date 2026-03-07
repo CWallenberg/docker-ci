@@ -4,11 +4,6 @@ LABEL maintainer="CWallenberg" \
     php="8.4"
 
 WORKDIR /var/www
-#COPY . /var/www
-
-# COPY INSTALL SCRIPTS
-COPY ./scripts/*.sh /var/www/
-RUN chmod +x /var/www/*.sh
 
 # Install PHP extensions and PECL modules.
 RUN buildDeps=" \
@@ -49,24 +44,33 @@ RUN buildDeps=" \
 	    zip \
     " \
 	&& apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y $buildDeps $runtimeDeps \
-	&& bash ./nodejs-24.sh \
 	&& docker-php-ext-configure zip \
     # Don't instal soap, mysqli
     # Skip bcmath, bz2, calendar for now
-    && docker-php-ext-install intl pdo_mysql pcntl zip \
     && docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
-    && docker-php-ext-install gd \
-	&& docker-php-ext-configure gmp \
-	&& docker-php-ext-install gmp \
-    && docker-php-ext-install exif \
+    && docker-php-ext-install -j"$(nproc)" \
+        intl \
+        pdo_mysql \
+        pcntl\
+        zip \
+        gd \
+        gmp \
+        exif \
+        zip \
     && apt-get purge -y --auto-remove $buildDeps \
-    && rm -r /var/lib/apt/lists/* \
-    # Install Composer.
-    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    #&& ln -s $(composer config --global home) /root/composer \
-    && rm /var/www/*.sh
-ENV PATH=$PATH:/root/.composer/vendor/bin COMPOSER_ALLOW_SUPERUSER=1
-RUN npm install --global corepack@latest
-RUN ln -s $(which php) /usr/local/bin/php8.4
+    && rm -r /var/lib/apt/lists/*
 
-# RUN php -v
+# Install Composer (official source)
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+# Install Node 24 from official image
+COPY --from=node:24-bookworm-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:24-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && npm install --global corepack@latest \
+    && ln -s $(which php) /usr/local/bin/php8.4
+
+ENV PATH="$PATH:/root/.composer/vendor/bin" \
+    COMPOSER_ALLOW_SUPERUSER=1
