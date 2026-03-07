@@ -1,4 +1,4 @@
-FROM php:8.4
+FROM php:8.4-cli
 LABEL maintainer="CWallenberg" \
     node="24" \
     php="8.4"
@@ -25,7 +25,6 @@ RUN buildDeps=" \
         git \
         gnupg2 \
         httpie \
-        imagemagick-6-common \
         jq \
         libfreetype6 \
         libfreetype6-dev \
