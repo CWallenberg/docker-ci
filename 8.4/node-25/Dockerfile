@@ -58,7 +58,11 @@ RUN buildDeps=" \
         exif \
         zip \
     && apt-get purge -y --auto-remove $buildDeps \
-    && rm -r /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm /var/log/apt/history.log \
+    && rm -r /var/log/apt/* \
+    && rm /var/log/dpkg.log
 
 # Install Composer (official source)
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
