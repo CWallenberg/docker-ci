@@ -24,7 +24,7 @@ on:
       - 'scripts-storage/*.sh'
 
   schedule:
-    - cron: '0 2 * * 0,1,2,5'   # Sunday,Monday,Tuesday,Friday 02:00 UTC
+    - cron: '0 2 * * 0,1,2,3,4,5'   # Sunday, Monday, Tuesday, Wednesday, Thursday, Friday 02:00 UTC
 
 jobs:
 
