@@ -35,20 +35,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ["8.3", "8.4", "8.5"]
+        php: ["8.4", "8.5"]
         #php: ["8.4"]
-        node: ["20", "22", "24", "25", "26"]
+        node: ["22", "24", "25", "26"]
         #node: ["24"]
         arch: ["amd64", "arm64"]
-        exclude:
-          - php: "8.3"
-            node: "25"
-          - php: "8.3"
-            node: "26"
-          - php: "8.4"
-            node: "20"
-          - php: "8.5"
-            node: "20"
 
     steps:
       - name: Start Measurement
@@ -137,19 +128,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ["8.3", "8.4", "8.5"]
+        php: ["8.4", "8.5"]
         #php: ["8.4"]
-        node: ["20", "22", "24", "25", "26"]
+        node: ["22", "24", "25", "26"]
         #node: ["24"]
         exclude:
-          - php: "8.3"
-            node: "25"
-          - php: "8.3"
-            node: "26"
-          - php: "8.4"
-            node: "20"
-          - php: "8.5"
-            node: "20"
+          #- php: "8.4"
+          #  node: "20"
+          #- php: "8.5"
+          #  node: "20"
 
     steps:
       - name: Start Measurement
