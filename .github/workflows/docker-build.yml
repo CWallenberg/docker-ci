@@ -1,5 +1,9 @@
 name: Build Docker Images (Native Multi-Arch)
 
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write
