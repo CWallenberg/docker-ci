@@ -5,7 +5,7 @@ ARG BUILD_DATE
 
 LABEL maintainer="CWallenberg" \
     node="24" \
-    php="8.4"
+    php="8.4" \
     org.opencontainers.image.created=$BUILD_DATE
 
 WORKDIR /var/www
