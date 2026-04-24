@@ -1,12 +1,7 @@
 FROM php:8.4-cli
-
-ARG SOURCE_DATE_EPOCH
-ARG BUILD_DATE
-
 LABEL maintainer="CWallenberg" \
     node="24" \
-    php="8.4" \
-    org.opencontainers.image.created=$BUILD_DATE
+    php="8.4"
 
 WORKDIR /var/www
 
