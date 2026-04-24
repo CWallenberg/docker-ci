@@ -17,7 +17,7 @@ env:
   GHCR_DEBUG: "false"
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
   push:
     branches:
       - main
