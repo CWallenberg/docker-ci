@@ -49,7 +49,7 @@ jobs:
     steps:
       - name: Start Measurement
         if: github.event_name != 'pull_request'
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: start-measurement
         continue-on-error: true
@@ -58,7 +58,7 @@ jobs:
 
       - name: Checkout Repo Measurement
         if: github.event_name != 'pull_request'
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: get-measurement
           label: 'repo checkout'
@@ -105,7 +105,7 @@ jobs:
             .
 
       - name: Docker build Measurment
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: get-measurement
           label: 'docker build'
@@ -113,7 +113,7 @@ jobs:
 
       - name: Show Energy Results
         if: github.event_name != 'pull_request'
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: display-results
         continue-on-error: true
@@ -140,7 +140,7 @@ jobs:
     steps:
       - name: Start Measurement
         if: github.event_name != 'pull_request'
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: start-measurement
         continue-on-error: true
@@ -187,7 +187,7 @@ jobs:
             ghcr.io/${REPO_LOWER}:${{ matrix.php }}-node-${{ matrix.node }}
 
       - name: Docker image merge Measurment
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: get-measurement
           label: 'docker merge'
@@ -244,7 +244,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GHCR_PAT }}
 
       - name: GHCR Arch Tags Cleanup Measurment
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: get-measurement
           label: 'ghcr arch cleanup'
@@ -252,7 +252,7 @@ jobs:
 
       - name: Show Energy Results
         if: github.event_name != 'pull_request'
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: display-results
         continue-on-error: true
@@ -266,7 +266,7 @@ jobs:
     steps:
       - name: Start Measurement
         if: github.event_name != 'pull_request'
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: start-measurement
         continue-on-error: true
@@ -327,7 +327,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GHCR_PAT }}
 
       - name: GHCR Cache tags Cleanup Measurment
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: get-measurement
           label: 'ghcr cache tags cleanup'
@@ -335,7 +335,7 @@ jobs:
 
       - name: Show Energy Results
         if: github.event_name != 'pull_request'
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: display-results
         continue-on-error: true
