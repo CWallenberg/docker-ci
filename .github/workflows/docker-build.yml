@@ -10,6 +10,7 @@ permissions:
 
 env:
   LATEST_PHP_VERSION: "8.5"
+  # Follow Node.JS LTS version
   LATEST_NODE_VERSION: "24"
 
   CACHE_KEEP_COUNT: "2"
@@ -41,7 +42,7 @@ jobs:
       matrix:
         php: ["8.4", "8.5"]
         #php: ["8.4"]
-        node: ["22", "24", "25"]
+        node: ["22", "24", "25", "26"]
         #node: ["24"]
         arch: ["amd64", "arm64"]
 
@@ -128,7 +129,7 @@ jobs:
       matrix:
         php: ["8.4", "8.5"]
         #php: ["8.4"]
-        node: ["22", "24", "25"]
+        node: ["22", "24", "25", "26"]
         #node: ["24"]
         #exclude:
           #- php: "8.4"
