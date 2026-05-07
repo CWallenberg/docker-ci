@@ -10,7 +10,8 @@ permissions:
 
 env:
   LATEST_PHP_VERSION: "8.5"
-  LATEST_NODE_VERSION: "26"
+  # Follow Node.JS LTS version
+  LATEST_NODE_VERSION: "24"
 
   CACHE_KEEP_COUNT: "2"
   UNTAGGED_RETENTION_DAYS: "1"
