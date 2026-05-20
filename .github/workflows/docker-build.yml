@@ -6,7 +6,7 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
+  packages: read
 
 env:
   LATEST_PHP_VERSION: "8.5"
@@ -37,6 +37,10 @@ jobs:
     name: Build ${{ matrix.php }}-node-${{ matrix.node }} (${{ matrix.arch }})
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
 
+    permissions:
+      contents: read
+      packages: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -55,6 +59,8 @@ jobs:
         continue-on-error: true
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Checkout Repo Measurement
         if: github.event_name != 'pull_request'
@@ -123,6 +129,10 @@ jobs:
     name: Merge multi-arch manifests
     needs: build
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
 
     strategy:
       fail-fast: false
