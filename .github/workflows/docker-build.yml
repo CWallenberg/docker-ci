@@ -29,7 +29,7 @@ on:
       - 'scripts-storage/*.sh'
 
   schedule:
-    - cron: '0 2 * * 0,1,2,3,4,5'   # Sunday, Monday, Tuesday, Wednesday, Thursday, Friday 02:00 UTC
+    - cron: '0 2 * * 1,5'   # Monday, Friday 02:00 UTC
 
 jobs:
 
@@ -46,7 +46,7 @@ jobs:
       matrix:
         php: ["8.4", "8.5"]
         #php: ["8.4"]
-        node: ["22", "24", "25", "26"]
+        node: ["22", "24", "26"]
         #node: ["24"]
         arch: ["amd64", "arm64"]
 
@@ -139,7 +139,7 @@ jobs:
       matrix:
         php: ["8.4", "8.5"]
         #php: ["8.4"]
-        node: ["22", "24", "25", "26"]
+        node: ["22", "24", "26"]
         #node: ["24"]
         #exclude:
           #- php: "8.4"
