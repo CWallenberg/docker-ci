@@ -26,6 +26,7 @@ on:
       - '8.3/**'
       - '8.4/**'
       - '8.5/**'
+      - '8.6/**'
       - 'scripts-storage/*.sh'
 
   schedule:
@@ -35,7 +36,7 @@ jobs:
 
   build:
     name: Build ${{ matrix.php }}-node-${{ matrix.node }} (${{ matrix.arch }})
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
 
     permissions:
       contents: read
@@ -44,11 +45,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ["8.4", "8.5"]
+        php: ["8.4", "8.5", "8.6"]
         #php: ["8.4"]
         node: ["22", "24", "26"]
         #node: ["24"]
         arch: ["amd64", "arm64"]
+        exclude:
+          - php: "8.6"
+            node: "22"
 
     steps:
       - name: Start Measurement
@@ -128,7 +132,7 @@ jobs:
   merge:
     name: Merge multi-arch manifests
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     permissions:
       contents: read
@@ -137,13 +141,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ["8.4", "8.5"]
+        php: ["8.4", "8.5", "8.6"]
         #php: ["8.4"]
         node: ["22", "24", "26"]
         #node: ["24"]
-        #exclude:
-          #- php: "8.4"
-          #  node: "20"
+        exclude:
+          - php: "8.6"
+            node: "22"
           #- php: "8.5"
           #  node: "20"
 
@@ -270,7 +274,7 @@ jobs:
 
   prune-cache:
     name: Prune GHCR Cache & Untagged Images
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: merge
 
     steps:
