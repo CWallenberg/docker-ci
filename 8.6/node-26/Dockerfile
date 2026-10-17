@@ -1,7 +1,7 @@
-FROM php:8.6.0beta3-cli-trixie
+FROM php:8.6.0RC3-cli-trixie
 LABEL maintainer="CWallenberg" \
     node="26" \
-    php="8.6.0beta3"
+    php="8.6.0RC3"
 
 WORKDIR /var/www
 
