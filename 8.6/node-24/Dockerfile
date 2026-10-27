@@ -74,7 +74,7 @@ COPY --from=node:24-trixie-slim /usr/local/lib/node_modules /usr/local/lib/node_
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
     && npm install --global corepack@latest \
-    && ln -s $(which php) /usr/local/bin/php8.5
+    && ln -s $(which php) /usr/local/bin/php8.6
 
 ENV PATH="$PATH:/root/.composer/vendor/bin" \
     COMPOSER_ALLOW_SUPERUSER=1
