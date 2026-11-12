@@ -1,6 +1,6 @@
 FROM php:8.5.12-cli
 LABEL maintainer="CWallenberg" \
-    node="26" \
+    node="27-alpha" \
     php="8.5"
 
 WORKDIR /var/www
