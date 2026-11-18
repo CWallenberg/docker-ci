@@ -65,7 +65,7 @@ RUN buildDeps=" \
     && rm /var/log/dpkg.log
 
 # Install Composer (official source)
-COPY --from=composer:2.11.1 /usr/bin/composer /usr/local/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
 # Install Node 26 from official image
 COPY --from=node:26.13.1-trixie-slim /usr/local/bin/node /usr/local/bin/node
