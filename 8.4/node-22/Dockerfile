@@ -65,7 +65,7 @@ RUN buildDeps=" \
     && rm /var/log/dpkg.log
 
 # Install Composer (official source)
-COPY --from=composer:2.11.1 /usr/bin/composer /usr/local/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
 # Install Node 22 from official image
 COPY --from=node:22.23.5-trixie-slim /usr/local/bin/node /usr/local/bin/node

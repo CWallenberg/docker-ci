@@ -1,7 +1,7 @@
-FROM php:8.6.0RC5-cli-trixie
+FROM php:8.6.0RC7-cli-trixie
 LABEL maintainer="CWallenberg" \
     node="27-alpha" \
-    php="8.6.0RC5"
+    php="8.6.0RC7"
 
 WORKDIR /var/www
 
@@ -68,8 +68,8 @@ RUN buildDeps=" \
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
 # Install Node 27 from official image
-COPY --from=node:27.0.0-alpha.0.0.0-trixie-slim /usr/local/bin/node /usr/local/bin/node
-COPY --from=node:27.0.0-alpha.0.0.0-trixie-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=node:27.0.0-alpha.0.1.1-trixie-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:27.0.0-alpha.0.1.1-trixie-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
