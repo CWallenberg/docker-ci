@@ -1,4 +1,4 @@
-FROM php:8.6.0RC7-cli-trixie
+FROM php:8.6-cli-trixie
 LABEL maintainer="CWallenberg" \
     node="24" \
     php="8.6.0RC7"

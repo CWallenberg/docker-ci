@@ -1,4 +1,4 @@
-FROM php:8.5.12-cli
+FROM php:8.5-cli
 LABEL maintainer="CWallenberg" \
     node="27-alpha" \
     php="8.5"
